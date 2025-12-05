@@ -1,128 +1,225 @@
-import { IUser, IEmotionalCheckin, IPlannerEntry } from '../models/types.js';
+// server/src/services/userService.ts
 
-const mockUsers: Map<string, IUser> = new Map();
+import { IUser, IEmotionalCheckin, IPlannerEntry, IBrainDumpEntry, IFocusSession } from '../models/types.js';
+import { User } from '../models/User.js'; // Import the Mongoose Model
+
+
 
 export const userService = {
-  async getUserByClerkId(clerkId: string): Promise<IUser | null> {
-    return mockUsers.get(clerkId) || null;
+  /**
+   * Retrieves a User document by their Clerk ID.
+   * @param clerkId The unique ID provided by Clerk.
+   * @returns The user object or null if not found.
+   */
+  async getUserByClerkId(clerkId: string): Promise<IUser | null> {
+    // Replaced mockUsers.get(clerkId) with Mongoose findOne
+    return await User.findOne({ clerkId });
+  },
+
+  /**
+   * Creates a new User document in the database.
+   * @returns The newly created user object.
+   */
+async deleteBrainDumpEntry(clerkId: string, entryId: string): Promise<IUser | null> {
+    return await User.findOneAndUpdate(
+      { clerkId },
+      { 
+        $pull: { 
+          // Use $pull to remove the element where _id matches entryId
+          brainDumpEntries: { _id: entryId } 
+        },
+        $set: { updatedAt: new Date() } 
+      },
+      { new: true }
+    );
   },
 
-  async createUser(clerkId: string, userFirstName: string, userLastName: string, userEmail: string): Promise<IUser> {
-    const newUser: IUser = {
-      clerkId,
-      userFirstName,
-      userLastName,
-      userEmail,
-      userType: 'user',
-      emotionalCheckins: [],
-      plannerEntries: [],
-      enrolledCourses: [],
-      favoriteResources: [],
-      registeredEvents: [],
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
-    mockUsers.set(clerkId, newUser);
-    return newUser;
+async deletePlannerEntry(clerkId: string, entryId: string): Promise<IUser | null> {
+    return await User.findOneAndUpdate(
+      { clerkId },
+      { 
+        $pull: { 
+          // Use $pull to remove the element where _id matches entryId
+          plannerEntries: { _id: entryId } 
+        },
+        $set: { updatedAt: new Date() } 
+      },
+      { new: true }
+    );
   },
 
-  async updateUser(clerkId: string, updates: Partial<IUser>): Promise<IUser | null> {
-    const user = mockUsers.get(clerkId);
-    if (!user) return null;
 
-    const updated = { ...user, ...updates, updatedAt: new Date() };
-    mockUsers.set(clerkId, updated);
-    return updated;
+  async createUser(
+    clerkId: string, 
+    userFirstName: string, 
+    userLastName: string, 
+    userEmail: string
+  ): Promise<IUser> {
+    // Replaced manual object creation and map set with Mongoose create
+    const newUser = await User.create({
+      clerkId,
+      userFirstName,
+      userLastName,
+      userEmail,
+      userType: 'user',
+      // Mongoose handles default values (emotionalCheckins: [], createdAt, etc.) automatically
+    });
+    return newUser;
+  },
+
+  /**
+   * Updates general user profile information.
+   * @param clerkId The unique ID provided by Clerk.
+   * @param updates A partial object of user fields to update.
+   * @returns The updated user object or null if not found.
+   */
+  async updateUser(clerkId: string, updates: Partial<IUser>): Promise<IUser | null> {
+    // findOneAndUpdate for atomic update
+    return await User.findOneAndUpdate(
+      { clerkId },
+      { $set: { ...updates, updatedAt: new Date() } },
+      { new: true } // returns the updated document
+    );
+  },
+
+  /**
+   * Adds a new emotional checkin to the user's document.
+   * @param clerkId The unique ID provided by Clerk.
+   * @param checkin The checkin data.
+   * @returns The updated user object or null if not found.
+   */
+  async addEmotionalCheckin(clerkId: string, checkin: IEmotionalCheckin): Promise<IUser | null> {
+    // Use $push to add a new checkin to the array
+    return await User.findOneAndUpdate(
+      { clerkId },
+      { 
+        $push: { emotionalCheckins: { ...checkin, checkinDate: checkin.checkinDate || new Date() } },
+        $set: { updatedAt: new Date() } 
+      },
+      { new: true }
+    );
+  },
+
+  /**
+   * Retrieves all emotional checkins for a user.
+   * @returns An array of checkin objects.
+   */
+  async getEmotionalCheckins(clerkId: string): Promise<IEmotionalCheckin[]> {
+    // Use select to retrieve only the emotionalCheckins field
+    const user = await User.findOne({ clerkId }).select('emotionalCheckins -_id');
+    return user?.emotionalCheckins || [];
+  },
+
+  /**
+   * Adds a new planner entry to the user's document.
+   * @returns The updated user object or null if not found.
+   */
+  async addPlannerEntry(clerkId: string, entry: IPlannerEntry): Promise<IUser | null> {
+    // Use $push to add a new entry to the array
+    return await User.findOneAndUpdate(
+      { clerkId },
+      { 
+        $push: { plannerEntries: { ...entry, createdAt: new Date() } },
+        $set: { updatedAt: new Date() } 
+      },
+      { new: true }
+    );
+  },
+
+  // --- NEW METHOD: Add Brain Dump Entry ---
+  async addBrainDumpEntry(clerkId: string, entry: IBrainDumpEntry): Promise<IUser | null> {
+    return await User.findOneAndUpdate(
+      { clerkId },
+      { 
+        $push: { brainDumpEntries: { ...entry, createdAt: new Date() } },
+        $set: { updatedAt: new Date() } 
+      },
+      { new: true }
+    );
+  },
+  
+  // --- NEW METHOD: Add Focus Session ---
+  async addFocusSession(clerkId: string, session: IFocusSession): Promise<IUser | null> {
+    return await User.findOneAndUpdate(
+      { clerkId },
+      { 
+        $push: { focusSessions: { ...session, completedAt: new Date() } },
+        $set: { updatedAt: new Date() } 
+      },
+      { new: true }
+    );
   },
 
-  async addEmotionalCheckin(clerkId: string, checkin: IEmotionalCheckin): Promise<IUser | null> {
-    const user = mockUsers.get(clerkId);
-    if (!user) return null;
+  /**
+   * Retrieves all planner entries for a user.
+   * @returns An array of planner entry objects.
+   */
+  async getPlannerEntries(clerkId: string): Promise<IPlannerEntry[]> {
+    // Use select to retrieve only the plannerEntries field
+    const user = await User.findOne({ clerkId }).select('plannerEntries -_id');
+    return user?.plannerEntries || [];
+  },
 
-    const newCheckin: IEmotionalCheckin = {
-      ...checkin,
-      _id: `checkin_${Date.now()}`,
-      checkinDate: checkin.checkinDate || new Date(),
-    };
+  /**
+   * Updates a specific planner entry using its array ID.
+   * @returns The updated planner entry object or null if not found.
+   */
+  async updatePlannerEntry(
+    clerkId: string, 
+    entryId: string, 
+    updates: Partial<IPlannerEntry>
+  ): Promise<IPlannerEntry | null> {
+    // Use the positional operator ($) to update a specific element in an array
+    const updatedUser = await User.findOneAndUpdate(
+      { clerkId, 'plannerEntries._id': entryId },
+      { 
+        $set: { 
+          'plannerEntries.$.pEntryTime': updates.pEntryTime,
+          'plannerEntries.$.pEntryTask': updates.pEntryTask,
+          'plannerEntries.$.pEntryStatus': updates.pEntryStatus,
+          updatedAt: new Date()
+        } 
+      },
+      { new: true }
+    );
 
-    user.emotionalCheckins.push(newCheckin);
-    user.updatedAt = new Date();
-    mockUsers.set(clerkId, user);
-    return user;
-  },
+    if (!updatedUser) return null;
 
-  async getEmotionalCheckins(clerkId: string): Promise<IEmotionalCheckin[]> {
-    const user = mockUsers.get(clerkId);
-    return user?.emotionalCheckins || [];
-  },
+    // Manually find and return the updated sub-document for type safety/consistency
+    return updatedUser.plannerEntries.find(e => e._id?.toString() === entryId) || null;
+  },
 
-  async addPlannerEntry(clerkId: string, entry: IPlannerEntry): Promise<IUser | null> {
-    const user = mockUsers.get(clerkId);
-    if (!user) return null;
+  /**
+   * Enrolls a user in a course by adding the course ID to the enrolledCourses array.
+   */
+  async enrollCourse(clerkId: string, courseId: string): Promise<IUser | null> {
+    // Use $addToSet to add the ID only if it doesn't already exist
+    return await User.findOneAndUpdate(
+      { clerkId, enrolledCourses: { $ne: courseId } },
+      { $addToSet: { enrolledCourses: courseId }, $set: { updatedAt: new Date() } },
+      { new: true }
+    );
+  },
 
-    const newEntry: IPlannerEntry = {
-      ...entry,
-      _id: `entry_${Date.now()}`,
-      createdAt: new Date(),
-    };
+  
+  async addFavoriteResource(clerkId: string, resourceId: string): Promise<IUser | null> {
+    // Use $addToSet to add the ID only if it doesn't already exist
+    return await User.findOneAndUpdate(
+      { clerkId, favoriteResources: { $ne: resourceId } },
+      { $addToSet: { favoriteResources: resourceId }, $set: { updatedAt: new Date() } },
+      { new: true }
+    );
+  },
 
-    user.plannerEntries.push(newEntry);
-    user.updatedAt = new Date();
-    mockUsers.set(clerkId, user);
-    return user;
-  },
-
-  async getPlannerEntries(clerkId: string): Promise<IPlannerEntry[]> {
-    const user = mockUsers.get(clerkId);
-    return user?.plannerEntries || [];
-  },
-
-  async updatePlannerEntry(clerkId: string, entryId: string, updates: Partial<IPlannerEntry>): Promise<IPlannerEntry | null> {
-    const user = mockUsers.get(clerkId);
-    if (!user) return null;
-
-    const entryIndex = user.plannerEntries.findIndex(e => e._id === entryId);
-    if (entryIndex === -1) return null;
-
-    user.plannerEntries[entryIndex] = { ...user.plannerEntries[entryIndex], ...updates };
-    user.updatedAt = new Date();
-    mockUsers.set(clerkId, user);
-    return user.plannerEntries[entryIndex];
-  },
-
-  async enrollCourse(clerkId: string, courseId: string): Promise<IUser | null> {
-    const user = mockUsers.get(clerkId);
-    if (!user) return null;
-
-    if (!user.enrolledCourses.includes(courseId)) {
-      user.enrolledCourses.push(courseId);
-      user.updatedAt = new Date();
-      mockUsers.set(clerkId, user);
-    }
-    return user;
-  },
-
-  async addFavoriteResource(clerkId: string, resourceId: string): Promise<IUser | null> {
-    const user = mockUsers.get(clerkId);
-    if (!user) return null;
-
-    if (!user.favoriteResources.includes(resourceId)) {
-      user.favoriteResources.push(resourceId);
-      user.updatedAt = new Date();
-      mockUsers.set(clerkId, user);
-    }
-    return user;
-  },
-
-  async registerEvent(clerkId: string, eventId: string): Promise<IUser | null> {
-    const user = mockUsers.get(clerkId);
-    if (!user) return null;
-
-    if (!user.registeredEvents.includes(eventId)) {
-      user.registeredEvents.push(eventId);
-      user.updatedAt = new Date();
-      mockUsers.set(clerkId, user);
-    }
-    return user;
-  },
+  /**
+   * Registers a user for an event by adding the event ID to the registeredEvents array.
+   */
+  async registerEvent(clerkId: string, eventId: string): Promise<IUser | null> {
+    // Use $addToSet to add the ID only if it doesn't already exist
+    return await User.findOneAndUpdate(
+      { clerkId, registeredEvents: { $ne: eventId } },
+      { $addToSet: { registeredEvents: eventId }, $set: { updatedAt: new Date() } },
+      { new: true }
+    );
+  },
 };

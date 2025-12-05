@@ -1,33 +1,48 @@
-import React from 'react';
+import React, { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { Menu, X, Settings } from 'lucide-react'; 
-import { useState } from 'react';
-
-// Note: This component assumes the user context will determine if a user is SignedIn 
-// and whether the Clerk components (UserButton, SignedIn/Out) are available.
-// For the prototype, we keep the Clerk imports commented out.
+import { useAuth, SignedIn, SignedOut, UserButton } from '@clerk/clerk-react'; 
+import { useUserProfile } from '../context/UserProfileContext.tsx'; // Imports userProfile
 
 export function Navigation() {
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+    
+    // 1. Get Authentication and User Profile Status
+    const { isSignedIn } = useAuth();
+    // Use userProfile for Mongo-backed data, including 'userType'
+    const { userProfile, isProfileLoading } = useUserProfile(); 
 
     const closeMobileMenu = () => setMobileMenuOpen(false);
 
     // List of links that appear in the main navigation area
-    const primaryNavLinks = [
+    const primaryNavLinks = useMemo(() => [
         { to: '/courses', name: 'Courses' },
         { to: '/events', name: 'Events' },
         { to: '/resources', name: 'Resources' },
-    ];
+    ], []);
 
     // List of links that typically require authentication
-    const authLinks = [
+    const authLinks = useMemo(() => [
         { to: '/dashboard', name: 'Dashboard' },
         { to: '/productivity', name: 'Productivity Tools' },
-        { to: '/profile', name: 'Profile' }, // IMPLEMENTED PROFILE LINK
-        { to: '/admin', name: 'Admin' }, // Placeholder for Admin access
-    ];
+        { to: '/profile', name: 'Profile' },
+    ], []);
+    
+    // Admin link is conditional on profile being loaded and userType matching 'admin'
+    const isAdmin = userProfile?.userType === 'admin';
 
-    // Placeholder image path for the logo
+    // Combine all navigation links for mobile view only
+    const allLinks = useMemo(() => {
+        let links = [...primaryNavLinks];
+        if (isSignedIn && userProfile) { // Ensure profile is loaded before showing auth links
+            links = links.concat(authLinks);
+            if (isAdmin) {
+                links.push({ to: '/admin', name: 'Admin' });
+            }
+        }
+        return links;
+    }, [primaryNavLinks, authLinks, isSignedIn, isAdmin, userProfile]);
+
 
     return (
         <header className="bg-[#30506C] text-white sticky top-0 z-50 shadow-lg">
@@ -40,10 +55,10 @@ export function Navigation() {
                             alt="ADHD Support UK Logo" 
                             className="h-10 w-10 object-contain rounded-md" 
                         />
-                        <span className="text-xl text-black font-semibold tracking-wide">ADHD Support UK</span>
+                        <span className="text-xl text-white font-semibold tracking-wide">ADHD Support UK</span>
                     </Link>
 
-                    {/* Desktop Navigation Links (Primary and Authenticated) */}
+                    {/* Desktop Navigation Links */}
                     <nav className="hidden md:flex items-center space-x-6">
                         {primaryNavLinks.map(link => (
                             <Link key={link.to} to={link.to} className="hover:text-[#469CA4] text-white transition font-medium">
@@ -51,34 +66,46 @@ export function Navigation() {
                             </Link>
                         ))}
                         
-                        {/* <SignedIn> */}
-                            {authLinks.map(link => (
-                                <Link key={link.to} to={link.to} className="hover:text-[#469CA4] text-white transition font-medium">
-                                    {link.name}
-                                </Link>
-                            ))}
-                        {/* </SignedIn> */}
+                        {/* Authenticated Links: Only render if signed in AND profile loaded */}
+                        <SignedIn>
+                            {/* Wait for profile data to load before rendering conditional links */}
+                            {!isProfileLoading && (
+                                <>
+                                    {authLinks.map(link => (
+                                        <Link key={link.to} to={link.to} className="hover:text-[#469CA4] text-white transition font-medium">
+                                            {link.name}
+                                        </Link>
+                                    ))}
+                                    {/* Admin Link (Conditional) */}
+                                    {isAdmin && (
+                                        <Link to="/admin" className="hover:text-[#469CA4] text-white transition font-medium flex items-center space-x-1">
+                                            <Settings size={16} /> <span>Admin</span>
+                                        </Link>
+                                    )}
+                                </>
+                            )}
+                        </SignedIn>
                     </nav>
 
                     {/* Desktop Utility (Sign In/User Button) */}
                     <div className="hidden md:flex items-center space-x-4">
-                        {/* <SignedOut> */}
+                        <SignedOut>
                             <Link
                                 to="/sign-in"
-                                className="px-4 py-2 rounded-lg hover:bg-[#469CA4] transition text-sm font-semibold"
+                                className="px-4 py-2 rounded-lg hover:bg-[#469CA4] transition text-sm font-semibold text-white"
                             >
                                 Sign In
                             </Link>
                             <Link
                                 to="/sign-up"
-                                className="px-4 py-2 rounded-lg bg-[#469CA4] hover:bg-[#3a7d84] transition text-sm font-semibold"
+                                className="px-4 py-2 rounded-lg bg-[#469CA4] hover:bg-[#3a7d84] transition text-sm font-semibold text-white"
                             >
                                 Sign Up
                             </Link>
-                        {/* </SignedOut> */}
-                        {/* <SignedIn> */}
-                            {/* <UserButton afterSignOutUrl="/" /> */}
-                        {/* </SignedIn> */}
+                        </SignedOut>
+                        <SignedIn>
+                            <UserButton afterSignOutUrl="/" />
+                        </SignedIn>
                     </div>
 
                     {/* Mobile Menu Button */}
@@ -96,7 +123,8 @@ export function Navigation() {
             {mobileMenuOpen && (
                 <div className="md:hidden bg-[#263A47] border-t border-[#469CA4] absolute w-full shadow-xl">
                     <nav className="px-4 py-4 space-y-3">
-                        {[...primaryNavLinks, ...authLinks].map(link => (
+                        {/* Render ALL links calculated in the allLinks array */}
+                        {allLinks.map(link => (
                             <Link
                                 key={link.to}
                                 to={link.to}
@@ -108,24 +136,30 @@ export function Navigation() {
                         ))}
 
                         {/* Mobile Auth Buttons */}
-                        <div className="pt-4 space-y-2 border-t border-gray-700">
-                            {/* <SignedOut> */}
+                        <SignedOut>
+                            <div className="pt-4 space-y-2 border-t border-gray-700">
                                 <Link
                                     to="/sign-in"
-                                    className="block text-center w-full px-4 py-2 rounded-lg hover:bg-[#469CA4] transition text-sm font-semibold border border-[#469CA4]"
+                                    className="block text-center w-full px-4 py-2 rounded-lg hover:bg-[#469CA4] transition text-sm font-semibold border border-[#469CA4] text-white"
                                     onClick={closeMobileMenu}
                                 >
                                     Sign In
                                 </Link>
                                 <Link
                                     to="/sign-up"
-                                    className="block text-center w-full px-4 py-2 rounded-lg bg-[#469CA4] hover:bg-[#3a7d84] transition text-sm font-semibold"
+                                    className="block text-center w-full px-4 py-2 rounded-lg bg-[#469CA4] hover:bg-[#3a7d84] transition text-sm font-semibold text-white"
                                     onClick={closeMobileMenu}
                                 >
                                     Sign Up
                                 </Link>
-                            {/* </SignedOut> */}
-                        </div>
+                            </div>
+                        </SignedOut>
+                        <SignedIn>
+                            <div className="pt-4 border-t border-gray-700">
+                                <span className="block text-sm text-gray-400 mb-2">Account:</span>
+                                <UserButton afterSignOutUrl="/" />
+                            </div>
+                        </SignedIn>
                     </nav>
                 </div>
             )}

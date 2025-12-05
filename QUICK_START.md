@@ -10,7 +10,7 @@ Get the application running locally in minutes.
 
 ## Local Development
 
-### Option 1: Run Frontend Only (Recommended for Demo)
+### Option 1: Run Frontend Only 
 
 This runs the complete UI with mock data and doesn't require the backend.
 
@@ -50,12 +50,11 @@ Frontend: `http://localhost:5173`
 ```bash
 cd server
 npm install
-npm run dev
+npm start
 ```
 
 Backend: `http://localhost:5000`
 
-**Note**: The backend currently runs mock services. To enable database persistence, follow `/server/BACKEND_ACTIVATION_GUIDE.md`.
 
 ## First Time Setup
 
@@ -92,41 +91,57 @@ cd server && npm run dev
 
 Navigate to `http://localhost:5173`
 
-## Default Demo User
-
-The application comes with a pre-configured demo user:
-
-- **Name**: Alex Johnson
-- **Email**: alex.johnson@example.com
-- **Type**: Regular User
-
-Click "Login as Demo User" to access the dashboard.
 
 ## Project Structure
 
 ```
-adhd-support-uk/
-├── client/                 # React frontend (Vercel)
+project/
+├── client/                          # React Frontend
 │   ├── src/
-│   │   ├── components/     # Header, Navigation
-│   │   ├── pages/          # Dashboard, Courses, etc.
-│   │   ├── services/       # API client
-│   │   ├── context/        # User context
-│   │   ├── types/          # TypeScript types
-│   │   └── App.tsx         # Main app
+│   │   ├── components/
+│   │   │   ├── Header.tsx          # Top navigation bar
+│   │   │   └── Navigation.tsx      # Main nav menu
+│   │   ├── pages/
+│   │   │   ├── Dashboard.tsx       # Main dashboard
+│   │   │   ├── Productivity.tsx    # Tools (tasks, mood, habits)
+│   │   │   ├── Courses.tsx         # Course management
+│   │   │   ├── Resources.tsx       # Resource library
+│   │   │   ├── Events.tsx          # Event calendar
+│   │   │   ├── Profile.tsx         # User profile
+│   │   │   └── Admin.tsx           # Admin panel
+│   │   ├── context/
+│   │   │   └── UserContext.tsx     # State management
+│   │   ├── services/
+│   │   │   └── api.ts              # API client
+│   │   ├── types/
+│   │   │   └── index.ts            # TypeScript interfaces
+│   │   ├── App.tsx                 # Main app with routing
+│   │   └── index.css               # Global styles
 │   ├── package.json
-│   └── vite.config.ts
+│   ├── vite.config.ts
+│   ├── tsconfig.json
+│   └── index.html
 │
-├── server/                 # Node/Express backend (Render)
+├── server/                          # Node/Express Backend
 │   ├── src/
-│   │   ├── models/         # Data types (types.ts)
-│   │   └── services/       # Business logic
+│   │   ├── models/
+│   │   │   └── types.ts            # MongoDB-style interfaces
+│   │   └── services/
+│   │       ├── userService.ts      # User operations
+│   │       ├── habitService.ts     # Habit operations
+│   │       ├── courseService.ts    # Course operations
+│   │       ├── resourceService.ts  # Resource operations
+│   │       ├── eventService.ts     # Event operations
+│   │       └── index.ts            # Service exports
+│   ├── dist/                       # Compiled output
 │   ├── package.json
-│   └── BACKEND_ACTIVATION_GUIDE.md
+│   ├── tsconfig.json
+│   └── BACKEND_ACTIVATION_GUIDE.md # MongoDB setup guide
 │
-├── README.md              # Project overview
-├── QUICK_START.md         # This file
-└── DEPLOYMENT_GUIDE.md    # Production deployment
+├── README.md                        # Project overview
+├── QUICK_START.md                   # Setup instructions
+├── DEPLOYMENT_GUIDE.md              # Production deployment
+└── PROJECT_SUMMARY.md               # This file
 ```
 
 ## Available Commands
@@ -269,20 +284,7 @@ Currently, these return mock data. To enable real database calls, activate the b
 4. **Review Services**: Check `/server/src/services` for business logic
 5. **Deploy**: Follow `DEPLOYMENT_GUIDE.md` to deploy to Vercel and Render
 
-## Getting Help
 
-- **Frontend Issues**: Check `/client` README and src files
-- **Backend Setup**: See `/server/BACKEND_ACTIVATION_GUIDE.md`
-- **Deployment**: Follow `DEPLOYMENT_GUIDE.md`
-- **Type Issues**: Run `npm run typecheck` for TypeScript errors
-
-## Development Tips
-
-- **Hot Reload**: Frontend changes auto-reload in browser
-- **React DevTools**: Install Chrome/Firefox React DevTools extension
-- **Type Safety**: Use strict TypeScript settings
-- **Console Logs**: Check browser console for API errors
-- **Network Tab**: Monitor API calls in DevTools
 
 ## Performance Notes
 

@@ -1,112 +1,122 @@
+// server/src/services/eventService.ts
+
 import { IEvent } from '../models/types.js';
-
-const mockEvents: Map<string, IEvent> = new Map();
-
-const seededEvents: IEvent[] = [
-  {
-    _id: 'event_1',
-    eventName: 'ADHD Support Group Monthly Meetup',
-    eventDate: new Date('2024-12-15T18:00:00'),
-    eventLocation: 'Virtual - Zoom',
-    eventDescription: 'Monthly support group meeting for individuals with ADHD. Share experiences and strategies.',
-    attendees: [],
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  },
-  {
-    _id: 'event_2',
-    eventName: 'Expert Q&A: ADHD and Relationships',
-    eventDate: new Date('2024-12-20T19:00:00'),
-    eventLocation: 'London Community Center',
-    eventDescription: 'Live Q&A session with Dr. Emily Chen discussing ADHD and relationship management.',
-    attendees: [],
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  },
-  {
-    _id: 'event_3',
-    eventName: 'Productivity Workshop',
-    eventDate: new Date('2025-01-10T14:00:00'),
-    eventLocation: 'Virtual - Microsoft Teams',
-    eventDescription: 'Interactive workshop on building sustainable productivity systems for ADHD brains.',
-    attendees: [],
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  },
-];
-
-seededEvents.forEach(event => {
-  mockEvents.set(event._id!, event);
-});
+import { Event } from '../models/Event.js'; // Import the Mongoose Model
 
 export const eventService = {
+  /**
+   * Retrieves all events.
+   * @returns An array of all event objects.
+   */
   async getAllEvents(): Promise<IEvent[]> {
-    return Array.from(mockEvents.values());
+    // Finds all events
+    return await Event.find({}).lean<IEvent[]>();
   },
 
+  /**
+   * Retrieves a single event by its ID.
+   * @param eventId The ID of the event.
+   * @returns The event object or null if not found.
+   */
   async getEventById(eventId: string): Promise<IEvent | null> {
-    return mockEvents.get(eventId) || null;
+    // Uses findById for quick retrieval
+    return await Event.findById(eventId).lean<IEvent | null>();
   },
 
+  /**
+   * Retrieves events scheduled in the future, sorted chronologically.
+   * @returns An array of upcoming event objects.
+   */
   async getUpcomingEvents(): Promise<IEvent[]> {
     const now = new Date();
-    return Array.from(mockEvents.values())
-      .filter(event => event.eventDate > now)
-      .sort((a, b) => a.eventDate.getTime() - b.eventDate.getTime());
+    // Finds events where eventDate is greater than the current time, and sorts them ascending
+    return await Event.find({ eventDate: { $gt: now } })
+      .sort({ eventDate: 1 }) // 1 for ascending order
+      .lean<IEvent[]>();
   },
 
+  /**
+   * Creates a new event and saves it to the database.
+   * @returns The newly created event object.
+   */
   async createEvent(
     eventName: string,
     eventDate: Date,
     eventLocation: string,
     eventDescription: string
   ): Promise<IEvent> {
-    const newEvent: IEvent = {
-      _id: `event_${Date.now()}`,
+    // Use Mongoose create to save the new event
+    const newEvent = await Event.create({
       eventName,
       eventDate,
       eventLocation,
       eventDescription,
-      attendees: [],
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
-    mockEvents.set(newEvent._id!, newEvent);
-    return newEvent;
+      attendees: [], // Default value handled by schema, but explicit here
+    });
+    return newEvent.toObject() as IEvent;
   },
 
+  /**
+   * Adds a user's ID to the event's attendees list.
+   * @param eventId The ID of the event.
+   * @param userId The ID of the user to add.
+   * @returns The updated event object or null if not found.
+   */
   async addAttendee(eventId: string, userId: string): Promise<IEvent | null> {
-    const event = mockEvents.get(eventId);
-    if (!event) return null;
-
-    if (!event.attendees.includes(userId)) {
-      event.attendees.push(userId);
-      event.updatedAt = new Date();
-      mockEvents.set(eventId, event);
-    }
-    return event;
+    // Use $addToSet to add the userId only if it doesn't already exist
+    return await Event.findByIdAndUpdate(
+      eventId,
+      { 
+        $addToSet: { attendees: userId }, 
+        $set: { updatedAt: new Date() } 
+      },
+      { new: true }
+    ).lean<IEvent | null>();
   },
 
+  /**
+   * Removes a user's ID from the event's attendees list.
+   * @param eventId The ID of the event.
+   * @param userId The ID of the user to remove.
+   * @returns The updated event object or null if not found.
+   */
   async removeAttendee(eventId: string, userId: string): Promise<IEvent | null> {
-    const event = mockEvents.get(eventId);
-    if (!event) return null;
-
-    event.attendees = event.attendees.filter(id => id !== userId);
-    event.updatedAt = new Date();
-    mockEvents.set(eventId, event);
-    return event;
+    // Use $pull to remove the userId from the array
+    return await Event.findByIdAndUpdate(
+      eventId,
+      { 
+        $pull: { attendees: userId }, 
+        $set: { updatedAt: new Date() } 
+      },
+      { new: true }
+    ).lean<IEvent | null>();
   },
 
+  /**
+   * Updates an existing event.
+   * @param eventId The ID of the event to update.
+   * @param updates A partial object of event fields to update.
+   * @returns The updated event object or null if not found.
+   */
   async updateEvent(eventId: string, updates: Partial<IEvent>): Promise<IEvent | null> {
-    const event = mockEvents.get(eventId);
-    if (!event) return null;
-
-    const updated = { ...event, ...updates, updatedAt: new Date() };
-    mockEvents.set(eventId, updated);
-    return updated;
+    // Use findByIdAndUpdate to atomically update the event
+    return await Event.findByIdAndUpdate(
+      eventId,
+      { 
+        $set: { ...updates, updatedAt: new Date() } 
+      },
+      { new: true } // Return the modified document
+    ).lean<IEvent | null>();
   },
 
+  /**
+   * Deletes a specific event by its ID.
+   * @param eventId The ID of the event to delete.
+   * @returns A boolean indicating success.
+   */
   async deleteEvent(eventId: string): Promise<boolean> {
-    return mockEvents.delete(eventId);
+    const result = await Event.deleteOne({ _id: eventId });
+    // Returns true if one document was successfully deleted
+    return result.deletedCount === 1;
   },
 };

@@ -1,3 +1,7 @@
+// server/src/models/types.ts - FULL UPDATED CONTENT
+
+import { Types } from 'mongoose'; // <-- Ensure this is still here for Mongoose compatibility
+
 export interface IEmotionalCheckin {
   _id?: string;
   checkinMood: 'happy' | 'sad' | 'anxious' | 'calm' | 'overwhelmed' | 'focused';
@@ -13,16 +17,31 @@ export interface IPlannerEntry {
   createdAt?: Date;
 }
 
+// --- NEW INTERFACE FOR BRAIN DUMP ---
+export interface IBrainDumpEntry {
+  _id?: string;
+  content: string;
+  createdAt: Date;
+}
+
+// --- NEW INTERFACE FOR FOCUS TIMER ---
+export interface IFocusSession {
+  _id?: string;
+  duration: number; // duration in minutes
+  completedAt: Date;
+}
+
 export interface IHabit {
   _id?: string;
   habitName: string;
   habitFrequency: 'daily' | 'weekly' | 'monthly';
   habitProgress: number;
-  userId: string;
+  userId: string | Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
 }
 
+// --- USER INTERFACE (Crucial for Clerk Integration) ---
 export interface IUser {
   _id?: string;
   clerkId: string;
@@ -32,17 +51,23 @@ export interface IUser {
   userType: 'user' | 'admin';
   emotionalCheckins: IEmotionalCheckin[];
   plannerEntries: IPlannerEntry[];
-  enrolledCourses: string[];
-  favoriteResources: string[];
-  registeredEvents: string[];
+  
+  // --- NEW FIELDS ADDED HERE ---
+  brainDumpEntries: IBrainDumpEntry[]; 
+  focusSessions: IFocusSession[];
+  
+  // Note: Using Types.ObjectId | string for references for Mongoose compatibility
+  enrolledCourses: (string | Types.ObjectId)[];
+  favoriteResources: (string | Types.ObjectId)[];
+  registeredEvents: (string | Types.ObjectId)[];
   createdAt: Date;
   updatedAt: Date;
 }
 
 export interface IEnrollment {
   _id?: string;
-  userId: string;
-  courseId: string;
+  userId: string | Types.ObjectId;
+  courseId: string | Types.ObjectId;
   enrollmentDate: Date;
   completionStatus: 'enrolled' | 'in-progress' | 'completed';
 }
@@ -74,7 +99,7 @@ export interface IEvent {
   eventDate: Date;
   eventLocation: string;
   eventDescription: string;
-  attendees: string[];
+  attendees: (string | Types.ObjectId)[];
   createdAt: Date;
   updatedAt: Date;
 }
