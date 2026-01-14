@@ -23,6 +23,7 @@ import { Resources } from './pages/Resources';
 import { Events } from './pages/Events';
 import { Profile } from './pages/Profile';
 import { Admin } from './pages/Admin';
+import ParentingBook from "./pages/ParentingBook";
 
 
 const AutoSignInModal = () => {
@@ -77,6 +78,7 @@ const App: React.FC = () => {
               <Route path="/courses" element={<Courses />} />
               <Route path="/resources" element={<Resources />} />
               <Route path="/events" element={<Events />} />
+              <Route path="/parenting-book" element={<ParentingBook />} />
 
               {/* Protected */}
               <Route element={<ProtectedRoute />}>
